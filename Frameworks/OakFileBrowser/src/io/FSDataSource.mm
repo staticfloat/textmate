@@ -198,28 +198,16 @@ static ino_t inode (std::string const& path)
 // = Accepting Drops =
 // ===================
 
-static FSItem* FindParent (FSItem* parent, FSItem* child)
-{
-	for(FSItem* item in [parent children])
-	{
-		if(item == child)
-			return parent;
-		else if(FSItem* tmp = FindParent(item, child))
-			return tmp;
-	}
-	return nil;
-}
-
 - (NSDragOperation)outlineView:(NSOutlineView*)anOutlineView validateDrop:(id <NSDraggingInfo>)info proposedItem:(FSItem*)item proposedChildIndex:(NSInteger)childIndex
 {
-	if(![(item ?: rootItem).url isFileURL])
+	if(item.leaf || ![(item ?: rootItem).url isFileURL])
 		return NSDragOperationNone;
 
-	FSItem* parent        = (item.leaf ? FindParent(rootItem, item) : item) ?: rootItem;
+	[anOutlineView setDropItem:item dropChildIndex:NSOutlineViewDropOnItemIndex];
 
 	NSPasteboard* pboard  = [info draggingPasteboard];
 	NSArray* draggedPaths = [pboard propertyListForType:NSFilenamesPboardType];
-	NSString* dropPath    = [parent.url path];
+	NSString* dropPath    = [(item ?: rootItem).url path];
 
 	dev_t targetDevice = path::device([dropPath fileSystemRepresentation]);
 	BOOL linkOperation = ([[NSApp currentEvent] modifierFlags] & NSControlKeyMask) == NSControlKeyMask;
@@ -239,9 +227,6 @@ static FSItem* FindParent (FSItem* parent, FSItem* child)
 		NSString* parentPath = [aPath stringByDeletingLastPathComponent];
 		if(operation == NSDragOperationMove && [parentPath isEqualToString:dropPath])
 			continue;
-
-		if(item != parent || childIndex != NSOutlineViewDropOnItemIndex)
-			[anOutlineView setDropItem:parent dropChildIndex:NSOutlineViewDropOnItemIndex];
 
 		return operation;
 	}
